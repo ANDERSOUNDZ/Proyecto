@@ -1,5 +1,3 @@
-pip install pyserial
-
 import serial
 import time
 import sys
