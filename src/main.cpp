@@ -1,43 +1,53 @@
-#include <Arduino.h> // <--- ESTA ES LA LÍNEA QUE TE FALTA
+#include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
 
-const int R = 9;
-const int G = 10;
-const int B = 11;
+#define PIN 6
+#define NUM_LEDS 6
 
-String estado = "free";
+Adafruit_NeoPixel strip(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
 
-void actualizarLED(); // Prototipo de función (buena práctica en C++)
+String input = "";
+
+void procesarEstado(String data);
 
 void setup() {
-  pinMode(R, OUTPUT);
-  pinMode(G, OUTPUT);
-  pinMode(B, OUTPUT);
   Serial.begin(9600);
-  actualizarLED();
+  strip.begin();
+  strip.show();
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(0, 255, 0));
+  }
+  strip.show();
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    estado = Serial.readStringUntil('\n');
-    estado.trim();
-    actualizarLED();
+  while (Serial.available()) {
+    char c = Serial.read();
+
+    if (c == '\n') {
+      procesarEstado(input);
+      input = "";
+    } else {
+      input += c;
+    }
   }
 }
 
-void actualizarLED() {
-  if (estado == "free") {
-    digitalWrite(R, LOW);
-    digitalWrite(G, HIGH);
-    digitalWrite(B, LOW);
-  } 
-  else if (estado == "busy") {
-    digitalWrite(R, HIGH);
-    digitalWrite(G, LOW);
-    digitalWrite(B, LOW);
+void procesarEstado(String data) {
+  if (data.length() != NUM_LEDS) return;
+
+  strip.clear();
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    if (data[i] == '0') {
+      strip.setPixelColor(i, strip.Color(0, 255, 0));
+    } else if (data[i] == '1') {
+      strip.setPixelColor(i, strip.Color(255, 0, 0));
+    } else if (data[i] == '2') {
+      strip.setPixelColor(i, strip.Color(0, 0, 0));
+    }
   }
-  else if (estado == "off") {
-    digitalWrite(R, LOW);
-    digitalWrite(G, LOW);
-    digitalWrite(B, LOW);
-  }
+
+  strip.show();
 }

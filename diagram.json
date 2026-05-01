@@ -3,56 +3,31 @@
   "author": "Anonymous maker",
   "editor": "wokwi",
   "parts": [
-    { "type": "wokwi-breadboard", "id": "bb1", "top": -147, "left": 233.2, "attrs": {} },
-    { "type": "wokwi-arduino-uno", "id": "uno", "top": -143.4, "left": -221.4, "attrs": {} },
+    { "type": "wokwi-breadboard", "id": "bb1", "top": -140, "left": -40, "attrs": {} },
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": -180, "left": -320, "attrs": {} },
     {
-      "type": "wokwi-rgb-led",
-      "id": "rgb1",
-      "top": -53.6,
-      "left": 298.7,
-      "attrs": { "common": "cathode" }
+      "type": "wokwi-led-strip",
+      "id": "strip1",
+      "top": -65.1,
+      "left": 144,
+      "attrs": { "pixels": "6" }
     },
     {
       "type": "wokwi-resistor",
       "id": "r1",
-      "top": -62.4,
-      "left": 306.65,
-      "rotate": 90,
-      "attrs": { "value": "220" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r2",
-      "top": -62.4,
-      "left": 297.05,
-      "rotate": 90,
-      "attrs": { "value": "220" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r3",
-      "top": -62.4,
-      "left": 277.85,
-      "rotate": 90,
-      "attrs": { "value": "220" }
+      "top": -82.45,
+      "left": 57.6,
+      "attrs": { "value": "330" }
     }
   ],
   "connections": [
-    [ "uno:GND.3", "bb1:bn.1", "black", [ "v0" ] ],
-    [ "uno:9", "bb1:6t.a", "green", [ "v0" ] ],
-    [ "uno:10", "bb1:8t.a", "green", [ "v0" ] ],
-    [ "uno:11", "bb1:9t.a", "green", [ "v0" ] ],
-    [ "bb1:bn.5", "bb1:7b.j", "green", [ "v0" ] ],
-    [ "rgb1:R", "bb1:6b.h", "", [ "$bb" ] ],
-    [ "rgb1:COM", "bb1:7b.i", "", [ "$bb" ] ],
-    [ "rgb1:G", "bb1:8b.h", "", [ "$bb" ] ],
-    [ "rgb1:B", "bb1:9b.h", "", [ "$bb" ] ],
-    [ "r1:1", "bb1:9t.b", "", [ "$bb" ] ],
-    [ "r1:2", "bb1:9b.f", "", [ "$bb" ] ],
-    [ "r2:1", "bb1:8t.b", "", [ "$bb" ] ],
-    [ "r2:2", "bb1:8b.f", "", [ "$bb" ] ],
-    [ "r3:1", "bb1:6t.b", "", [ "$bb" ] ],
-    [ "r3:2", "bb1:6b.f", "", [ "$bb" ] ]
+    [ "uno:5V", "bb1:tp.1", "red", [] ],
+    [ "uno:GND", "bb1:tn.1", "black", [] ],
+    [ "bb1:tp.10", "strip1:VDD", "red", [] ],
+    [ "bb1:tn.10", "strip1:VSS", "black", [] ],
+    [ "uno:6", "r1:1", "green", [] ],
+    [ "r1:2", "bb1:10t.a", "green", [] ],
+    [ "bb1:10t.a", "strip1:DIN", "green", [] ]
   ],
   "dependencies": {}
 }

@@ -2,60 +2,79 @@ import serial
 import time
 import sys
 
-# Configuración de constantes
 PORT = "rfc2217://localhost:4000"
-BAUD_RATE = 115200
+BAUD_RATE = 9600
 
-def transmitir(ser_obj, mensaje):
-    """
-    Envía el mensaje al Arduino agregando un salto de línea
-    y convirtiendo el string a bytes (UTF-8).
-    """
-    try:
-        # Limpiamos el mensaje de espacios extras
-        mensaje_limpio = mensaje.strip()
-        ser_obj.write(f"{mensaje_limpio}\n".encode('utf-8'))
-    except Exception as e:
-        print(f"Error al enviar datos: {e}")
+# Estado de las 6 oficinas
+estado = [0, 0, 0, 0, 0, 0]
+
+def enviar_estado(ser):
+    data = ''.join(map(str, estado))
+    ser.write((data + '\n').encode())
 
 def main():
-    print("--- Iniciando Comunicación con Arduino ---")
-    
-    try:
-        # serial_for_url es ideal para rfc2217
-        arduino = serial.serial_for_url(PORT, baudrate=BAUD_RATE, timeout=1)
-        
-        # El tiempo de espera es vital para que el Arduino procese el reinicio serial
-        print("Esperando conexión...")
-        time.sleep(2)
-        
-        if arduino.is_open:
-            print(f"Conectado exitosamente a: {PORT}")
-            print("Estados permitidos: 'free', 'busy', 'off'")
-        
-        while True:
-            # Capturamos la entrada del usuario
-            texto = input("\nIngrese estado (o 'salir'): ").lower().strip()
-            
-            if texto == 'salir':
-                print("Finalizando programa...")
-                break
-            
-            if texto in ['free', 'busy', 'off']:
-                transmitir(arduino, texto)
-                print(f"Comando '{texto}' enviado.")
-            else:
-                print("Comando no reconocido. Use: free, busy u off.")
+    arduino = serial.serial_for_url(PORT, baudrate=BAUD_RATE, timeout=1)
+    time.sleep(2)
 
-    except serial.SerialException as e:
-        print(f"\nError de puerto serial: {e}")
-        print("Asegúrate de que el servidor RFC2217 esté corriendo en el puerto 4000.")
-    except KeyboardInterrupt:
-        print("\n\nPrograma detenido por el usuario (Ctrl+C).")
-    finally:
-        if 'arduino' in locals() and arduino.is_open:
-            arduino.close()
-            print("Puerto serial cerrado correctamente.")
+    print("Comandos:")
+    print("ocupar: b-n (1-6)")
+    print("ocupar todo: b-all")
+    print("liberar: f-n (1-6)")
+    print("apagar: o-n (1-6)")
+    print("apagar todo: off")
+    print("prender o liberar todo: on")
+    print("salir")
+
+    while True:
+        cmd = input(">> ").lower().strip()
+
+        if cmd == "salir":
+            break
+        elif cmd == "off":
+            for i in range(6):
+                estado[i] = 2
+            enviar_estado(arduino)
+            print("Se apagaron todas las oficinas")
+            continue
+        elif cmd == "on":
+            for i in range(6):
+                estado[i] = 0
+            enviar_estado(arduino)
+            print("Se liberaron todas las oficinas")
+            continue
+        elif cmd == "b-all":
+            for i in range(6):
+                estado[i] = 1
+            enviar_estado(arduino)
+            print("Se ocuparon todas las oficinas")
+            continue
+
+        try:
+            accion, num = cmd.split('-')
+            idx = int(num) - 1
+
+            if 0 <= idx < 6:
+                if accion == "b":
+                    estado[idx] = 1
+                    print("Se ocupó la oficina", num)
+                elif accion == "f":
+                    estado[idx] = 0
+                    print("Se liberó la oficina", num)
+                elif accion == "o":
+                    estado[idx] = 2
+                    print("Se apagó la oficina", num)
+                else:
+                    print("Acción inválida")
+                    continue
+
+                enviar_estado(arduino)
+            else:
+                print("Número fuera de rango")
+
+        except:
+            print("Formato: f-1 | b-1 | o-1 | off | on | b-all")
+
+    arduino.close()
 
 if __name__ == "__main__":
     main()
