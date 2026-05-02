@@ -1,80 +1,115 @@
 import serial
-import time
-import sys
+import time as t
+from pulp import *
 
 PORT = "rfc2217://localhost:4000"
 BAUD_RATE = 9600
 
-# Estado de las 6 oficinas
-estado = [0, 0, 0, 0, 0, 0]
+# ahora trabajamos con HORAS (0–6)
+horas = [0]*6
+
 
 def enviar_estado(ser):
-    data = ''.join(map(str, estado))
+    data = ''.join(map(str, horas))
     ser.write((data + '\n').encode())
+    print("Enviado:", data)
+
+    # debug seguro
+    t.sleep(0.1)
+    try:
+        while ser.in_waiting:
+            print("Arduino:", ser.readline().decode(errors='ignore').strip())
+    except:
+        pass
+
+
+# OPTIMIZACIÓN
+def optimizar():
+    global horas
+
+    salas = range(6)
+    model = LpProblem("Coworking", LpMaximize)
+
+    x = LpVariable.dicts("uso", salas, lowBound=0, upBound=6, cat='Integer')
+
+    model += lpSum([x[i] for i in salas])
+
+    for i in salas:
+        if i < 4:
+            model += x[i] <= 4
+        else:
+            model += x[i] <= 6
+
+        model += x[i] + 2 <= 8
+
+    model.solve()
+
+    print("\nResultado optimización:")
+
+    for i in salas:
+        horas[i] = int(value(x[i]))
+        print(f"Sala {i+1}: {horas[i]}h")
+
 
 def main():
     arduino = serial.serial_for_url(PORT, baudrate=BAUD_RATE, timeout=1)
-    time.sleep(2)
+    t.sleep(2)
 
-    print("Comandos:")
-    print("ocupar: b-n (1-6)")
-    print("ocupar todo: b-all")
-    print("liberar: f-n (1-6)")
-    print("apagar: o-n (1-6)")
-    print("apagar todo: off")
-    print("prender o liberar todo: on")
-    print("salir")
+    print("\nComandos:")
+    print("opt → optimización")
+    print("h-n-x → asignar horas (ej: h-1-3)")
+    print("off → todo en 0h")
+    print("full → todo en 6h")
+    print("demo → ejemplo automático")
+    print("salir\n")
 
     while True:
         cmd = input(">> ").lower().strip()
 
         if cmd == "salir":
             break
+
+        elif cmd == "opt":
+            optimizar()
+            enviar_estado(arduino)
+            continue
+
         elif cmd == "off":
-            for i in range(6):
-                estado[i] = 2
+            horas[:] = [0]*6
             enviar_estado(arduino)
-            print("Se apagaron todas las oficinas")
-            continue
-        elif cmd == "on":
-            for i in range(6):
-                estado[i] = 0
-            enviar_estado(arduino)
-            print("Se liberaron todas las oficinas")
-            continue
-        elif cmd == "b-all":
-            for i in range(6):
-                estado[i] = 1
-            enviar_estado(arduino)
-            print("Se ocuparon todas las oficinas")
             continue
 
-        try:
-            accion, num = cmd.split('-')
-            idx = int(num) - 1
+        elif cmd == "full":
+            horas[:] = [6]*6
+            enviar_estado(arduino)
+            continue
 
-            if 0 <= idx < 6:
-                if accion == "b":
-                    estado[idx] = 1
-                    print("Se ocupó la oficina", num)
-                elif accion == "f":
-                    estado[idx] = 0
-                    print("Se liberó la oficina", num)
-                elif accion == "o":
-                    estado[idx] = 2
-                    print("Se apagó la oficina", num)
+        elif cmd == "demo":
+            horas[:] = [1,2,0,0,3,1]
+            enviar_estado(arduino)
+            continue
+
+        # asignación directa PRO
+        elif cmd.startswith("h-"):
+            try:
+                _, sala, h = cmd.split('-')
+                idx = int(sala) - 1
+                h = int(h)
+
+                if 0 <= idx < 6 and 0 <= h <= 6:
+                    horas[idx] = h
+                    enviar_estado(arduino)
                 else:
-                    print("Acción inválida")
-                    continue
+                    print("Valores fuera de rango")
+            except:
+                print("Formato: h-1-3")
 
-                enviar_estado(arduino)
-            else:
-                print("Número fuera de rango")
+        else:
+            print("Comando inválido")
 
-        except:
-            print("Formato: f-1 | b-1 | o-1 | off | on | b-all")
 
     arduino.close()
+
 
 if __name__ == "__main__":
     main()
